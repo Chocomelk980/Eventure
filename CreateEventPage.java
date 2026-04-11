@@ -9,96 +9,162 @@ public class CreateEventPage {
         frame.setSize(500, 500);
         frame.setLayout(new BorderLayout());
 
+        // Make fullscreen but keep OS controls
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        frame.setUndecorated(false);
+
         // Logo panel
         JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         logoPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 0));
-        logoPanel.setBackground(new Color(240, 240, 240));
+        logoPanel.setBackground(new Color(0x1c2e4a));
         logoPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.BLACK, 3),
+                BorderFactory.createLineBorder(new Color(0x23395d), 3),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
         JLabel logo = new JLabel("LOGO");
-        logo.setFont(new Font("Arial", Font.BOLD, 24));
+        logo.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        logo.setForeground(Color.WHITE);
         logoPanel.add(logo);
-        frame.add(logoPanel, BorderLayout.NORTH);
 
-        // Center panel with Create label + dashed box + form
+        JPanel logoWrapper = new JPanel(new BorderLayout());
+        logoWrapper.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
+        logoWrapper.setBackground(new Color(0x1c2e4a));
+        logoWrapper.add(logoPanel, BorderLayout.CENTER);
+
+        frame.add(logoWrapper, BorderLayout.NORTH);
+
+        // Center panel
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
         centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
+        centerPanel.setBackground(new Color(0x1c2e4a));
 
         JLabel createLabel = new JLabel("Create");
-        createLabel.setFont(new Font("Arial", Font.BOLD, 22));
+        createLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        createLabel.setForeground(Color.WHITE);
         createLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         centerPanel.add(createLabel);
-
-        // Dashed box with "+"
-        JPanel dashedBox = new JPanel(new BorderLayout());
-        dashedBox.setPreferredSize(new Dimension(200, 100));
-        dashedBox.setMaximumSize(new Dimension(200, 100));
-        dashedBox.setBackground(new Color(220, 220, 220));
-        dashedBox.setBorder(BorderFactory.createDashedBorder(Color.BLACK, 5, 5));
-        JLabel plus = new JLabel("+", SwingConstants.CENTER);
-        plus.setFont(new Font("Arial", Font.BOLD, 40));
-        dashedBox.add(plus, BorderLayout.CENTER);
-        dashedBox.setAlignmentX(Component.LEFT_ALIGNMENT);
-        centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        centerPanel.add(dashedBox);
 
         // Event Name field
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
         JLabel nameLabel = new JLabel("Name of the Event:");
+        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         JTextField nameField = new JTextField();
+        nameField.setBackground(new Color(0x152238));
+        nameField.setForeground(Color.WHITE);
+        nameField.setCaretColor(Color.WHITE);
+        nameField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        nameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x23395d), 2, true),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
         nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         centerPanel.add(nameLabel);
         centerPanel.add(nameField);
 
         // Date field
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        JLabel dateLabel = new JLabel("Date:");
+        JLabel dateLabel = new JLabel("Date (MM/DD/YY):");
+        dateLabel.setForeground(Color.WHITE);
+        dateLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         JTextField dateField = new JTextField();
+        dateField.setBackground(new Color(0x152238));
+        dateField.setForeground(Color.WHITE);
+        dateField.setCaretColor(Color.WHITE);
+        dateField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        dateField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x23395d), 2, true),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
         dateField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         centerPanel.add(dateLabel);
         centerPanel.add(dateField);
 
         // Time field
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        JLabel timeLabel = new JLabel("Time:");
+        JLabel timeLabel = new JLabel("Time (hh:mmam/pm):");
+        timeLabel.setForeground(Color.WHITE);
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         JTextField timeField = new JTextField();
+        timeField.setBackground(new Color(0x152238));
+        timeField.setForeground(Color.WHITE);
+        timeField.setCaretColor(Color.WHITE);
+        timeField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        timeField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x23395d), 2, true),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
         timeField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         centerPanel.add(timeLabel);
         centerPanel.add(timeField);
 
         frame.add(centerPanel, BorderLayout.CENTER);
 
-        // Buttons at bottom
+        // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
+        buttonPanel.setBackground(new Color(0x1c2e4a));
         JButton saveBtn = new JButton("Save");
         JButton cancelBtn = new JButton("Cancel");
 
-        // Rounded button look
         saveBtn.setFocusPainted(false);
         cancelBtn.setFocusPainted(false);
-        saveBtn.setBackground(new Color(70, 130, 180));
+        saveBtn.setBackground(new Color(0x23395d));
         saveBtn.setForeground(Color.WHITE);
-        cancelBtn.setBackground(new Color(200, 200, 200));
-        cancelBtn.setForeground(Color.BLACK);
+        saveBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        cancelBtn.setBackground(new Color(0x23395d));
+        cancelBtn.setForeground(Color.WHITE);
+        cancelBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         buttonPanel.add(saveBtn);
         buttonPanel.add(cancelBtn);
         frame.add(buttonPanel, BorderLayout.SOUTH);
 
-        // Button actions
+        // Button actions with validation
         saveBtn.addActionListener(e -> {
-            events.add(new Event(nameField.getText()));
+            String name = nameField.getText().trim();
+            String date = dateField.getText().trim();
+            String time = timeField.getText().trim();
+
+            // Validate name
+            if (name.isEmpty() || name.length() > 50) {
+                JOptionPane.showMessageDialog(frame,
+                        "Event name must be 1–50 characters.",
+                        "Invalid Name",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Validate date (MM/DD/YY)
+            if (!date.matches("^(0[1-9]|1[0-2])/([0-2][0-9]|3[01])/\\d{2}$")) {
+                JOptionPane.showMessageDialog(frame,
+                        "Date must be in MM/DD/YY format (e.g., 04/11/26).",
+                        "Invalid Date",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Validate time (hh:mmam/pm)
+            if (!time.matches("^(0?[1-9]|1[0-2]):[0-5][0-9](am|pm)$")) {
+                JOptionPane.showMessageDialog(frame,
+                        "Time must be in hh:mmam/pm format (e.g., 10:00am).",
+                        "Invalid Time",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // If all checks pass, save event with name, date, and time
+            events.add(new Event(name, date, time));
             frame.dispose();
             new LandingPage();
         });
+
         cancelBtn.addActionListener(e -> {
             frame.dispose();
             new LandingPage();
         });
 
+        frame.getContentPane().setBackground(new Color(0x1c2e4a));
         frame.setVisible(true);
     }
 }
