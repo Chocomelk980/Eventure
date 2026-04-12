@@ -55,11 +55,8 @@ public class CreateEventPage {
         nameField.setForeground(Color.WHITE);
         nameField.setCaretColor(Color.WHITE);
         nameField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        nameField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0x23395d), 2, true),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        nameField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true)); // edge-hugging
+        nameField.setMaximumSize(new Dimension(350, 30)); // reduced length
         centerPanel.add(nameLabel);
         centerPanel.add(nameField);
 
@@ -73,11 +70,8 @@ public class CreateEventPage {
         dateField.setForeground(Color.WHITE);
         dateField.setCaretColor(Color.WHITE);
         dateField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        dateField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0x23395d), 2, true),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        dateField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        dateField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true)); // edge-hugging
+        dateField.setMaximumSize(new Dimension(350, 30)); // reduced length
         centerPanel.add(dateLabel);
         centerPanel.add(dateField);
 
@@ -91,15 +85,13 @@ public class CreateEventPage {
         timeField.setForeground(Color.WHITE);
         timeField.setCaretColor(Color.WHITE);
         timeField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        timeField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0x23395d), 2, true),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        timeField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        timeField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true)); // edge-hugging
+        timeField.setMaximumSize(new Dimension(350, 30)); // reduced length
         centerPanel.add(timeLabel);
         centerPanel.add(timeField);
 
         frame.add(centerPanel, BorderLayout.CENTER);
+
 
         // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
