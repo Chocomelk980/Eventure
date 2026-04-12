@@ -51,12 +51,12 @@ public class ActivitiesPage {
         centerPanel.add(nameField);
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        String[] columns = {"Name", "Role", "Contact"};
+        String[] columns = {"Name", "Student Number", "Contact"};
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         JTable table = new JTable(model);
 
         final int[] lastAddedRow = {-1};
-        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+        DefaultTableCellRenderer borderedRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
                     JTable table, Object value, boolean isSelected,
@@ -70,11 +70,12 @@ public class ActivitiesPage {
                     c.setBackground(row % 2 == 0 ? new Color(0x1c2e4a) : new Color(0x192841));
                 }
                 c.setForeground(Color.WHITE);
+                ((JComponent) c).setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 1)); // add border
                 return c;
             }
         };
         for (int i = 0; i < table.getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setCellRenderer(renderer);
+            table.getColumnModel().getColumn(i).setCellRenderer(borderedRenderer);
         }
 
         JTableHeader header = table.getTableHeader();
@@ -130,23 +131,89 @@ public class ActivitiesPage {
             btn.setFocusPainted(false);
         }
 
-        // Save → commit changes
+        // Save → commit changes with validation
         saveBtn.addActionListener(e -> {
             String activityNameInput = nameField.getText().trim();
-            if (!activityNameInput.isEmpty()) {
-                List<String[]> participants = new ArrayList<>();
-                for (int i = 0; i < model.getRowCount(); i++) {
-                    String name = (String) model.getValueAt(i, 0);
-                    String role = (String) model.getValueAt(i, 1);
-                    String contact = (String) model.getValueAt(i, 2);
-                    participants.add(new String[]{name, role, contact});
-                }
-                if (activityName != null) {
-                    event.updateActivity(activityName, participants); // update existing
-                } else {
-                    event.addActivity(activityNameInput, participants); // new
-                }
+
+            // Validate activity name (letters and spaces only, max 50)
+            if (activityNameInput.isEmpty() || activityNameInput.length() > 50 || !activityNameInput.matches("^[A-Za-z ]+$")) {
+                JOptionPane.showMessageDialog(frame,
+                        "Activity name must be 1–50 letters only (no symbols or numbers).",
+                        "Invalid Activity Name",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
             }
+
+            List<String[]> participants = new ArrayList<>();
+            for (int i = 0; i < model.getRowCount(); i++) {
+                String name = model.getValueAt(i, 0) != null ? ((String) model.getValueAt(i, 0)).trim() : "";
+                String studentNumber = model.getValueAt(i, 1) != null ? ((String) model.getValueAt(i, 1)).trim() : "";
+                String contact = model.getValueAt(i, 2) != null ? ((String) model.getValueAt(i, 2)).trim() : "";
+
+                // Skip completely empty rows
+                if (name.isEmpty() && studentNumber.isEmpty() && contact.isEmpty()) {
+                    continue;
+                }
+
+                //Validate name
+                if (name != null && !name.trim().isEmpty()) {
+                    String trimmedName = name.trim();
+                    if (trimmedName.length() > 50 || !trimmedName.matches("^[A-Za-z ]+$")) {
+                        JOptionPane.showMessageDialog(frame,
+                                "Invalid participant name at row " + (i+1) +
+                                        ". Names must be 1–50 letters only (no symbols or numbers).",
+                                "Invalid Participant Name",
+                                JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+
+                // Validate student number
+                if (studentNumber != null && !studentNumber.isEmpty()) {
+                    if (!studentNumber.matches("^\\d{2}-\\d{4}-\\d{6}$") &&
+                            !studentNumber.matches("^\\d{2}-\\d{2}-\\d{4}-\\d{6}$")) {
+                        JOptionPane.showMessageDialog(frame,
+                                "Invalid student number format at row " + (i+1) +
+                                        ". Must be like XX-XXXX-XXXXXX or XX-XX-XXXX-XXXXXX.",
+                                "Invalid Student Number",
+                                JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+
+                // Validate contact (must be exactly 11 digits)
+                if (contact != null && !contact.isEmpty()) {
+                    if (!contact.matches("^\\d{11}$")) {
+                        JOptionPane.showMessageDialog(frame,
+                                "Invalid contact number at row " + (i+1) +
+                                        ". Must be exactly 11 digits (e.g., 09123456789).",
+                                "Invalid Contact",
+                                JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+
+                participants.add(new String[]{name, studentNumber, contact});
+            }
+            if (participants.isEmpty()) {
+                JOptionPane.showMessageDialog(frame,
+                        "You must add at least one participant before saving.",
+                        "No Participants",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (activityName != null) {
+                event.updateActivity(activityName, participants); // update existing
+            } else {
+                event.addActivity(activityNameInput, participants); // new
+            }
+
+            JOptionPane.showMessageDialog(frame,
+                    "Activity saved successfully!",
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+
             frame.dispose();
             new EventCustomization(event);
         });
