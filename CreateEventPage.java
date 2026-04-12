@@ -126,10 +126,10 @@ public class CreateEventPage {
             String date = dateField.getText().trim();
             String time = timeField.getText().trim();
 
-            // Validate name
-            if (name.isEmpty() || name.length() > 50) {
+            // Validate name (letters and spaces only, max 50)
+            if (name.isEmpty() || name.length() > 50 || !name.matches("^[A-Za-z ]+$")) {
                 JOptionPane.showMessageDialog(frame,
-                        "Event name must be 1–50 characters.",
+                        "Event name must be 1–50 letters only (no symbols or numbers).",
                         "Invalid Name",
                         JOptionPane.ERROR_MESSAGE);
                 return;
@@ -155,13 +155,27 @@ public class CreateEventPage {
 
             // If all checks pass, save event with name, date, and time
             events.add(new Event(name, date, time));
+
+            // Show success message
+            JOptionPane.showMessageDialog(frame,
+                    "Event created successfully!",
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+
             frame.dispose();
             new LandingPage();
         });
 
+        // Cancel with confirmation dialog
         cancelBtn.addActionListener(e -> {
-            frame.dispose();
-            new LandingPage();
+            int choice = JOptionPane.showConfirmDialog(frame,
+                    "Discard changes?",
+                    "Confirm Cancel",
+                    JOptionPane.YES_NO_OPTION);
+            if (choice == JOptionPane.YES_OPTION) {
+                frame.dispose();
+                new LandingPage();
+            }
         });
 
         frame.getContentPane().setBackground(new Color(0x1c2e4a));
