@@ -1,9 +1,3 @@
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.JTableHeader;
-import java.awt.*;
-import java.util.List;
 import java.util.ArrayList;
 
 public class BudgetsPage {
@@ -38,7 +32,7 @@ public class BudgetsPage {
         centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         centerPanel.setBackground(new Color(0x1c2e4a));
 
-        JLabel nameLabel = new JLabel("Budget Name:");
+        JLabel nameLabel = new JLabel("Budget Category:");
         nameLabel.setForeground(Color.WHITE);
         JTextField nameField = new JTextField();
         nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
@@ -51,12 +45,12 @@ public class BudgetsPage {
         centerPanel.add(nameField);
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        String[] columns = {"Category", "Amount"};
+        String[] columns = {"Item", "Amount", "Price per Item", "Total Spent"};
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         JTable table = new JTable(model);
 
         final int[] lastAddedRow = {-1};
-        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+        DefaultTableCellRenderer borderedRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
                     JTable table, Object value, boolean isSelected,
@@ -70,11 +64,12 @@ public class BudgetsPage {
                     c.setBackground(row % 2 == 0 ? new Color(0x1c2e4a) : new Color(0x192841));
                 }
                 c.setForeground(Color.WHITE);
+                ((JComponent) c).setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 1)); // add border
                 return c;
             }
         };
         for (int i = 0; i < table.getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setCellRenderer(renderer);
+            table.getColumnModel().getColumn(i).setCellRenderer(borderedRenderer);
         }
 
         JTableHeader header = table.getTableHeader();
@@ -107,7 +102,7 @@ public class BudgetsPage {
         addItemBtn.setForeground(Color.WHITE);
         addItemBtn.setFocusPainted(false);
         addItemBtn.addActionListener(e -> {
-            model.addRow(new Object[]{"", ""});
+            model.addRow(new Object[]{"", "", "", ""});
             lastAddedRow[0] = model.getRowCount() - 1;
             table.repaint();
         });
@@ -131,21 +126,95 @@ public class BudgetsPage {
         }
 
         // Save → commit changes
+        // Save → commit changes with validation
         saveBtn.addActionListener(e -> {
             String budgetNameInput = nameField.getText().trim();
-            if (!budgetNameInput.isEmpty()) {
-                List<String[]> items = new ArrayList<>();
-                for (int i = 0; i < model.getRowCount(); i++) {
-                    String category = (String) model.getValueAt(i, 0);
-                    String amount = (String) model.getValueAt(i, 1);
-                    items.add(new String[]{category, amount});
-                }
-                if (budgetName != null) {
-                    event.updateBudget(budgetName, items); // update existing
-                } else {
-                    event.addBudget(budgetNameInput, items); // new
-                }
+
+            // Validate budget name (letters + spaces only, max 50)
+            if (budgetNameInput.isEmpty() || budgetNameInput.length() > 50 || !budgetNameInput.matches("^[A-Za-z ]+$")) {
+                JOptionPane.showMessageDialog(frame,
+                        "Budget name must be 1–50 letters only (no symbols or numbers).",
+                        "Invalid Budget Name",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
             }
+
+            List<String[]> items = new ArrayList<>();
+            for (int i = 0; i < model.getRowCount(); i++) {
+                String item = model.getValueAt(i, 0) != null ? ((String) model.getValueAt(i, 0)).trim() : "";
+                String amount = model.getValueAt(i, 1) != null ? ((String) model.getValueAt(i, 1)).trim() : "";
+                String pricePerItem = model.getValueAt(i, 2) != null ? ((String) model.getValueAt(i, 2)).trim() : "";
+                String totalSpent = model.getValueAt(i, 3) != null ? ((String) model.getValueAt(i, 3)).trim() : "";
+
+                // Skip completely empty rows
+                if (item.isEmpty() && amount.isEmpty() && pricePerItem.isEmpty() && totalSpent.isEmpty()) {
+                    continue;
+                }
+
+                // Validate item name
+                if (!item.isEmpty() && (item.length() > 50 || !item.matches("^[A-Za-z ]+$"))) {
+                    JOptionPane.showMessageDialog(frame,
+                            "Invalid item name at row " + (i+1) +
+                                    ". Must be 1–50 letters only (no symbols or numbers).",
+                            "Invalid Item Name",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Validate amount (must be integer > 0)
+                if (!amount.isEmpty() && !amount.matches("^\\d+$")) {
+                    JOptionPane.showMessageDialog(frame,
+                            "Invalid amount at row " + (i+1) +
+                                    ". Must be a whole positive number.",
+                            "Invalid Amount",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Validate price per item (numeric, up to 2 decimals)
+                if (!pricePerItem.isEmpty() && !pricePerItem.matches("^\\d+(\\.\\d{1,2})?$")) {
+                    JOptionPane.showMessageDialog(frame,
+                            "Invalid price per item at row " + (i+1) +
+                                    ". Must be a positive number (up to 2 decimals).",
+                            "Invalid Price",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Validate total spent (numeric, up to 2 decimals)
+                if (!totalSpent.isEmpty() && !totalSpent.matches("^\\d+(\\.\\d{1,2})?$")) {
+                    JOptionPane.showMessageDialog(frame,
+                            "Invalid total spent at row " + (i+1) +
+                                    ". Must be a positive number (up to 2 decimals).",
+                            "Invalid Total Spent",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                items.add(new String[]{item, amount, pricePerItem, totalSpent});
+            }
+
+            // Require at least one item
+            if (items.isEmpty()) {
+                JOptionPane.showMessageDialog(frame,
+                        "You must add at least one budget item before saving.",
+                        "No Items",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Save or update
+            if (budgetName != null) {
+                event.updateBudget(budgetName, items); // update existing
+            } else {
+                event.addBudget(budgetNameInput, items); // new
+            }
+
+            JOptionPane.showMessageDialog(frame,
+                    "Budget saved successfully!",
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+
             frame.dispose();
             new EventCustomization(event);
         });
