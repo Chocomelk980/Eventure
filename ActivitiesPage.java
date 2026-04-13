@@ -3,40 +3,53 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
+@SuppressWarnings("all")
 public class ActivitiesPage {
     private Event event;
     private String activityName; // track if editing
+    private static final Map<String, JDialog> openDialogs = new HashMap<>();
 
-    public ActivitiesPage(Event event) {
-        this(event, null); // default: new activity
+    public ActivitiesPage(EventCustomization parent, Event event) {
+        this(parent, event, null); // default: new activity
     }
 
-    public ActivitiesPage(Event event, String activityName) {
+    public ActivitiesPage(EventCustomization parent, Event event, String activityName) {
+        // Check if dialog already exists for this activity
+        String dialogKey = event.getId() + "_" + (activityName == null ? "new" : activityName);
+        if (openDialogs.containsKey(dialogKey)) {
+            openDialogs.get(dialogKey).toFront();
+            openDialogs.get(dialogKey).requestFocus();
+            return;
+        }
+
         this.event = event;
         this.activityName = activityName;
 
-        JFrame frame = new JFrame(activityName == null ? "Add Activity" : "Edit Activity");
-        frame.setSize(600, 400);
-        frame.setLayout(new BorderLayout());
+        JDialog dialog = new JDialog(parent.getFrame(), activityName == null ? "Add Activity" : "Edit Activity", false);
+        dialog.setSize(600, 400);
+        dialog.setResizable(false);
 
-        // Make fullscreen but keep OS controls
-        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        frame.setUndecorated(false);
+        dialog.setLocationRelativeTo(null);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setLayout(new BorderLayout());
+        dialog.setContentPane(new EventureGradientPanel(new BorderLayout()));
 
         JLabel title = new JLabel(activityName == null ? "Create Activity" : "Edit Activity", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setForeground(Color.WHITE);
-        title.setOpaque(true);
-        title.setBackground(new Color(0x1c2e4a));
-        frame.add(title, BorderLayout.NORTH);
+        title.setOpaque(false);
+        dialog.add(title, BorderLayout.NORTH);
 
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
         centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        centerPanel.setBackground(new Color(0x1c2e4a));
+        centerPanel.setOpaque(false);
 
         JLabel nameLabel = new JLabel("Activity Name:");
         nameLabel.setForeground(Color.WHITE);
@@ -115,11 +128,18 @@ public class ActivitiesPage {
         centerPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         centerPanel.add(addParticipantBtn);
 
-        frame.add(centerPanel, BorderLayout.CENTER);
+        dialog.add(centerPanel, BorderLayout.CENTER);
 
-        // --- Navigation Buttons: Save, Back, Cancel ---
+        // Register dialog and clean up on close
+        openDialogs.put(dialogKey, dialog);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                openDialogs.remove(dialogKey);
+            }
+        });
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
-        buttonPanel.setBackground(new Color(0x1c2e4a));
+        buttonPanel.setOpaque(false);
 
         JButton saveBtn = new JButton("Save");
         JButton backBtn = new JButton("Back");
@@ -137,7 +157,7 @@ public class ActivitiesPage {
 
             // Validate activity name (letters and spaces only, max 50)
             if (activityNameInput.isEmpty() || activityNameInput.length() > 50 || !activityNameInput.matches("^[A-Za-z ]+$")) {
-                JOptionPane.showMessageDialog(frame,
+                JOptionPane.showMessageDialog(dialog,
                         "Activity name must be 1–50 letters only (no symbols or numbers).",
                         "Invalid Activity Name",
                         JOptionPane.ERROR_MESSAGE);
@@ -159,7 +179,7 @@ public class ActivitiesPage {
                 if (name != null && !name.trim().isEmpty()) {
                     String trimmedName = name.trim();
                     if (trimmedName.length() > 50 || !trimmedName.matches("^[A-Za-z ]+$")) {
-                        JOptionPane.showMessageDialog(frame,
+                        JOptionPane.showMessageDialog(dialog,
                                 "Invalid participant name at row " + (i+1) +
                                         ". Names must be 1–50 letters only (no symbols or numbers).",
                                 "Invalid Participant Name",
@@ -172,7 +192,7 @@ public class ActivitiesPage {
                 if (studentNumber != null && !studentNumber.isEmpty()) {
                     if (!studentNumber.matches("^\\d{2}-\\d{4}-\\d{6}$") &&
                             !studentNumber.matches("^\\d{2}-\\d{2}-\\d{4}-\\d{6}$")) {
-                        JOptionPane.showMessageDialog(frame,
+                        JOptionPane.showMessageDialog(dialog,
                                 "Invalid student number format at row " + (i+1) +
                                         ". Must be like XX-XXXX-XXXXXX or XX-XX-XXXX-XXXXXX.",
                                 "Invalid Student Number",
@@ -184,7 +204,7 @@ public class ActivitiesPage {
                 // Validate contact (must be exactly 11 digits)
                 if (contact != null && !contact.isEmpty()) {
                     if (!contact.matches("^\\d{11}$")) {
-                        JOptionPane.showMessageDialog(frame,
+                        JOptionPane.showMessageDialog(dialog,
                                 "Invalid contact number at row " + (i+1) +
                                         ". Must be exactly 11 digits (e.g., 09123456789).",
                                 "Invalid Contact",
@@ -196,46 +216,56 @@ public class ActivitiesPage {
                 participants.add(new String[]{name, studentNumber, contact});
             }
             if (participants.isEmpty()) {
-                JOptionPane.showMessageDialog(frame,
+                JOptionPane.showMessageDialog(dialog,
                         "You must add at least one participant before saving.",
                         "No Participants",
                         JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
+            String activityNameToPersist = activityName != null ? activityName : activityNameInput;
             if (activityName != null) {
                 event.updateActivity(activityName, participants); // update existing
             } else {
                 event.addActivity(activityNameInput, participants); // new
             }
 
-            JOptionPane.showMessageDialog(frame,
+            try {
+                EventureDatabase.saveActivity(event.getId(), activityNameToPersist, participants);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(dialog,
+                        "Failed to save activity to the database.",
+                        "Database Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            JOptionPane.showMessageDialog(dialog,
                     "Activity saved successfully!",
                     "Success",
                     JOptionPane.INFORMATION_MESSAGE);
 
-            frame.dispose();
+            dialog.dispose();
             new EventCustomization(event);
         });
 
         // Back → return without saving
         backBtn.addActionListener(e -> {
-            frame.dispose();
-            new EventCustomization(event);
+            dialog.dispose();
         });
 
         // Cancel → discard changes and return
         cancelBtn.addActionListener(e -> {
-            frame.dispose();
-            new EventCustomization(event);
+            dialog.dispose();
         });
 
         buttonPanel.add(saveBtn);
         buttonPanel.add(backBtn);
         buttonPanel.add(cancelBtn);
-        frame.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
 
-        frame.getContentPane().setBackground(new Color(0x1c2e4a));
+        dialog.getContentPane().setBackground(new Color(0x1c2e4a));
 
         // Pre-load existing activity if editing
         if (activityName != null) {
@@ -246,6 +276,6 @@ public class ActivitiesPage {
             }
         }
 
-        frame.setVisible(true);
+        dialog.setVisible(true);
     }
 }
