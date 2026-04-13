@@ -1,5 +1,5 @@
 import javax.swing.*;
-
+@SuppressWarnings("all")
 public class EventureApp {
     public static void main(String[] args) {
         // Set Nimbus Look & Feel for modern styling
