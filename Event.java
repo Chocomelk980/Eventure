@@ -1,6 +1,7 @@
 import java.util.*;
 
 public class Event {
+    private final int id;
     private String name;
     private String date; // format: MM/DD/YY
     private String time; // format: hh:mmam/pm
@@ -9,13 +10,15 @@ public class Event {
     private Map<String, List<String[]>> budgets = new HashMap<>();
 
     // Constructor
-    public Event(String name, String date, String time) {
+    public Event(int id, String name, String date, String time) {
+        this.id = id;
         this.name = name;
         this.date = date;
         this.time = time;
     }
 
     // ---------- Basic Info ----------
+    public int getId() { return id; }
     public String getName() { return name; }
     public String getDate() { return date; }
     public String getTime() { return time; }
