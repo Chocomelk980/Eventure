@@ -1,43 +1,27 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.List;
-
+import java.sql.SQLException;
+@SuppressWarnings("all")
 public class CreateEventPage {
-    public CreateEventPage(List<Event> events) {
+    public CreateEventPage() {
         JFrame frame = new JFrame("Create Event");
         frame.setSize(500, 500);
-        frame.setLayout(new BorderLayout());
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setContentPane(new EventureGradientPanel(new BorderLayout()));
 
         // Make fullscreen but keep OS controls
         frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         frame.setUndecorated(false);
 
-        // Logo panel
-        JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        logoPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 0));
-        logoPanel.setBackground(new Color(0x1c2e4a));
-        logoPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0x23395d), 3),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        ));
-        JLabel logo = new JLabel("LOGO");
-        logo.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        logo.setForeground(Color.WHITE);
-        logoPanel.add(logo);
-
-        JPanel logoWrapper = new JPanel(new BorderLayout());
-        logoWrapper.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
-        logoWrapper.setBackground(new Color(0x1c2e4a));
-        logoWrapper.add(logoPanel, BorderLayout.CENTER);
-
-        frame.add(logoWrapper, BorderLayout.NORTH);
+        // Top-left logo (symbol + typography)
+        frame.add(EventureBranding.createTopLogoHeader(), BorderLayout.NORTH);
 
         // Center panel
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
         centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
-        centerPanel.setBackground(new Color(0x1c2e4a));
+        centerPanel.setOpaque(false);
 
         JLabel createLabel = new JLabel("Create");
         createLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
@@ -77,7 +61,7 @@ public class CreateEventPage {
 
         // Time field
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        JLabel timeLabel = new JLabel("Time (hh:mmam/pm):");
+        JLabel timeLabel = new JLabel("Time (hh:mm am/pm):");
         timeLabel.setForeground(Color.WHITE);
         timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         JTextField timeField = new JTextField();
@@ -95,7 +79,7 @@ public class CreateEventPage {
 
         // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
-        buttonPanel.setBackground(new Color(0x1c2e4a));
+        buttonPanel.setOpaque(false);
         JButton saveBtn = new JButton("Save");
         JButton cancelBtn = new JButton("Cancel");
 
@@ -137,7 +121,7 @@ public class CreateEventPage {
             }
 
             // Validate time (hh:mmam/pm)
-            if (!time.matches("^(0?[1-9]|1[0-2]):[0-5][0-9](am|pm)$")) {
+            if (!time.matches("^(0?[1-9]|1[0-2]):[0-5][0-9](?i)(am|pm)$")) {
                 JOptionPane.showMessageDialog(frame,
                         "Time must be in hh:mmam/pm format (e.g., 10:00am).",
                         "Invalid Time",
@@ -146,7 +130,16 @@ public class CreateEventPage {
             }
 
             // If all checks pass, save event with name, date, and time
-            events.add(new Event(name, date, time));
+            try {
+                EventureDatabase.createEvent(name, date, time);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame,
+                        "Failed to save event to the database.",
+                        "Database Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
             // Show success message
             JOptionPane.showMessageDialog(frame,
@@ -170,7 +163,6 @@ public class CreateEventPage {
             }
         });
 
-        frame.getContentPane().setBackground(new Color(0x1c2e4a));
         frame.setVisible(true);
     }
 }
