@@ -3,21 +3,23 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
-
+@SuppressWarnings("all")
 public class EventCustomization {
+    private JFrame frame;
     private Event event;
 
     public EventCustomization(Event event) {
         this.event = event;
-        JFrame frame = new JFrame("Customize: " + event.getName());
+        frame = new JFrame("Customize: " + event.getName());
         frame.setSize(700, 500);
-        frame.setLayout(new BorderLayout());
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Make fullscreen but keep OS controls
+        // Fullscreen with OS controls
         frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         frame.setUndecorated(false);
+        frame.setContentPane(new EventureGradientPanel(new BorderLayout()));
 
-        // Banner placeholder
+        // Banner placeholder (transparent so gradient shows through)
         JPanel banner = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -31,13 +33,13 @@ public class EventCustomization {
             }
         };
         banner.setPreferredSize(new Dimension(600, 150));
-        banner.setBackground(new Color(0x1c2e4a));
+        banner.setOpaque(false); // let gradient show
         frame.add(banner, BorderLayout.NORTH);
 
         // Bottom panel with two columns
         JPanel bottomPanel = new JPanel(new GridLayout(1, 2, 20, 0));
         bottomPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        bottomPanel.setBackground(new Color(0x1c2e4a));
+        bottomPanel.setOpaque(false); // transparent
 
         // Activities column
         DefaultListModel<String> activityModel = new DefaultListModel<>();
@@ -86,26 +88,24 @@ public class EventCustomization {
         };
         activityList.setCellRenderer(renderer);
 
-        // FIXED: double-click passes selected name
         activityList.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     String selected = activityList.getSelectedValue();
                     if (selected != null) {
-                        frame.dispose();
-                        new ActivitiesPage(event, selected);
+                        new ActivitiesPage(EventCustomization.this, event, selected);
                     }
                 }
             }
         });
 
         JPanel activitiesPanel = new JPanel(new BorderLayout());
-        activitiesPanel.setBackground(new Color(0x1c2e4a));
+        activitiesPanel.setOpaque(false);
         activitiesPanel.add(activityScroll, BorderLayout.CENTER);
 
         JPanel activitiesBox = new JPanel(new BorderLayout());
         activitiesBox.setPreferredSize(new Dimension(200, 80));
-        activitiesBox.setBackground(new Color(0x1c2e4a));
+        activitiesBox.setBackground(EventureTheme.CARD_BG); // keep solid for contrast
         activitiesBox.setBorder(BorderFactory.createDashedBorder(new Color(0x23395d), 5, 5));
         JLabel plusAct = new JLabel("+", SwingConstants.CENTER);
         plusAct.setFont(new Font("Segoe UI", Font.BOLD, 40));
@@ -114,13 +114,12 @@ public class EventCustomization {
 
         JPanel activitiesWrapper = new JPanel(new BorderLayout());
         activitiesWrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        activitiesWrapper.setBackground(new Color(0x1c2e4a));
+        activitiesWrapper.setOpaque(false);
         activitiesWrapper.add(activitiesBox, BorderLayout.CENTER);
 
         activitiesBox.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                frame.dispose();
-                new ActivitiesPage(event);
+                new ActivitiesPage(EventCustomization.this, event);
             }
         });
         activitiesPanel.add(activitiesWrapper, BorderLayout.SOUTH);
@@ -147,26 +146,24 @@ public class EventCustomization {
 
         budgetList.setCellRenderer(renderer);
 
-        // FIXED: double-click passes selected name
         budgetList.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     String selected = budgetList.getSelectedValue();
                     if (selected != null) {
-                        frame.dispose();
-                        new BudgetsPage(event, selected);
+                        new BudgetsPage(EventCustomization.this, event, selected);
                     }
                 }
             }
         });
 
         JPanel budgetsPanel = new JPanel(new BorderLayout());
-        budgetsPanel.setBackground(new Color(0x1c2e4a));
+        budgetsPanel.setOpaque(false);
         budgetsPanel.add(budgetScroll, BorderLayout.CENTER);
 
         JPanel budgetsBox = new JPanel(new BorderLayout());
         budgetsBox.setPreferredSize(new Dimension(200, 80));
-        budgetsBox.setBackground(new Color(0x1c2e4a));
+        budgetsBox.setBackground(EventureTheme.CARD_BG); // keep solid for contrast
         budgetsBox.setBorder(BorderFactory.createDashedBorder(new Color(0x23395d), 5, 5));
         JLabel plusBud = new JLabel("+", SwingConstants.CENTER);
         plusBud.setFont(new Font("Segoe UI", Font.BOLD, 40));
@@ -175,13 +172,12 @@ public class EventCustomization {
 
         JPanel budgetsWrapper = new JPanel(new BorderLayout());
         budgetsWrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        budgetsWrapper.setBackground(new Color(0x1c2e4a));
+        budgetsWrapper.setOpaque(false);
         budgetsWrapper.add(budgetsBox, BorderLayout.CENTER);
 
         budgetsBox.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                frame.dispose();
-                new BudgetsPage(event);
+                new BudgetsPage(EventCustomization.this, event);
             }
         });
         budgetsPanel.add(budgetsWrapper, BorderLayout.SOUTH);
@@ -189,24 +185,24 @@ public class EventCustomization {
 
         frame.add(bottomPanel, BorderLayout.CENTER);
 
-        // --- NEW: Home button at bottom center ---
+        // Home button panel
         JPanel homePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        homePanel.setBackground(new Color(0x1c2e4a));
-
+        homePanel.setOpaque(false);
         JButton homeBtn = new JButton("Home");
         homeBtn.setBackground(new Color(0x23395d));
         homeBtn.setForeground(Color.WHITE);
         homeBtn.setFocusPainted(false);
-
         homeBtn.addActionListener(e -> {
             frame.dispose();
-            new LandingPage(); // replace with your actual home page class
+            new LandingPage();
         });
-
         homePanel.add(homeBtn);
         frame.add(homePanel, BorderLayout.SOUTH);
 
-        frame.getContentPane().setBackground(new Color(0x1c2e4a));
         frame.setVisible(true);
+    }
+
+    public JFrame getFrame() {
+        return frame;
     }
 }
