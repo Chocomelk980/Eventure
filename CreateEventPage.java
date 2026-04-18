@@ -155,10 +155,19 @@ public class CreateEventPage {
             }
 
             // Validate total budget
-            if (!totalBudget.matches("^\\d+(\\.\\d{1,2})?$") ||
-                    new BigDecimal(totalBudget).compareTo(BigDecimal.ZERO) <= 0) {
+            if (!totalBudget.matches("^\\d+(\\.\\d{1,2})?$")) {
                 JOptionPane.showMessageDialog(frame,
                         "Total budget must be a positive number with up to 2 decimals (e.g., 15000.00).",
+                        "Invalid Budget",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            BigDecimal totalBudgetAmount = new BigDecimal(totalBudget);
+            if (totalBudgetAmount.compareTo(BigDecimal.ZERO) <= 0 ||
+                    totalBudgetAmount.compareTo(new BigDecimal("500000")) > 0) {
+                JOptionPane.showMessageDialog(frame,
+                        "Total budget must be greater than 0 and not exceed 500,000.00.",
                         "Invalid Budget",
                         JOptionPane.ERROR_MESSAGE);
                 return;

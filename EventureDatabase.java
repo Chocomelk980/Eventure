@@ -193,6 +193,21 @@ public final class EventureDatabase {
         }
     }
 
+    public static boolean updateEventDetails(int eventId, String date, String time, String totalBudget) throws SQLException {
+        initialize();
+
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(
+                     "UPDATE events SET date = ?, time = ?, total_budget = ? WHERE id = ?"
+             )) {
+            statement.setString(1, date);
+            statement.setString(2, time);
+            statement.setString(3, totalBudget);
+            statement.setInt(4, eventId);
+            return statement.executeUpdate() > 0;
+        }
+    }
+
     public static Event loadEventWithDetails(int eventId) throws SQLException {
         initialize();
 

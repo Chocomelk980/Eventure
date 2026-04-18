@@ -107,6 +107,11 @@ public class LandingPage extends JFrame {
         label.setForeground(Color.WHITE);
         label.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        JLabel statusLabel = new JLabel(event.getEventStatus(), SwingConstants.CENTER);
+        statusLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        statusLabel.setForeground(getEventStatusColor(event.getEventStatus()));
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         buttonPanel.setOpaque(false);
         buttonPanel.add(deleteButton);
@@ -114,6 +119,8 @@ public class LandingPage extends JFrame {
 
         contentPanel.add(Box.createVerticalGlue());
         contentPanel.add(label);
+        contentPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+        contentPanel.add(statusLabel);
         contentPanel.add(Box.createRigidArea(new Dimension(0, 16)));
         contentPanel.add(buttonPanel);
         contentPanel.add(Box.createVerticalGlue());
@@ -144,6 +151,16 @@ public class LandingPage extends JFrame {
         plus.addMouseListener(createListener);
 
         return addCard;
+    }
+
+    private Color getEventStatusColor(String eventStatus) {
+        if ("Concluded".equals(eventStatus)) {
+            return new Color(0xF5B6B6);
+        }
+        if ("In Progress".equals(eventStatus)) {
+            return new Color(0xB7F5C6);
+        }
+        return new Color(0xFFF1B3);
     }
 
     private void openEvent(Event event) {

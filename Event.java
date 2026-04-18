@@ -1,8 +1,18 @@
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.Locale;
 
 public class Event {
     private static final String DEFAULT_ACTIVITY_STATUS = "Open";
+    private static final DateTimeFormatter EVENT_DATE_TIME_FORMATTER =
+            new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern("M/d/yy h:mma")
+                    .toFormatter(Locale.ENGLISH);
 
     private final int id;
     private String name;
@@ -121,6 +131,14 @@ public class Event {
         return getTotalBudgetAmount().subtract(getTotalSpentAmount());
     }
 
+    public String getEventStatus() {
+        LocalDateTime eventDateTime = parseEventDateTime();
+        if (eventDateTime == null) {
+            return "Status Unavailable";
+        }
+        return eventDateTime.isBefore(LocalDateTime.now()) ? "Concluded" : "In Progress";
+    }
+
     // ---------- Display ----------
     @Override
     public String toString() {
@@ -140,6 +158,17 @@ public class Event {
             return new BigDecimal(normalizeBudgetValue(value).replace(",", ""));
         } catch (NumberFormatException ex) {
             return BigDecimal.ZERO;
+        }
+    }
+
+    private LocalDateTime parseEventDateTime() {
+        try {
+            return LocalDateTime.parse(
+                    date + " " + time,
+                    EVENT_DATE_TIME_FORMATTER
+            );
+        } catch (DateTimeParseException ex) {
+            return null;
         }
     }
 }

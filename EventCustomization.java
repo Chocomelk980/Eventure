@@ -3,21 +3,15 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.DateTimeParseException;
 import java.text.DecimalFormat;
-import java.util.Locale;
 import java.util.*;
 @SuppressWarnings("all")
 public class EventCustomization {
-    private static final DateTimeFormatter EVENT_DATE_TIME_FORMATTER =
-            new DateTimeFormatterBuilder()
-                    .parseCaseInsensitive()
-                    .appendPattern("M/d/yy h:mma")
-                    .toFormatter(Locale.ENGLISH);
     private static final DecimalFormat BUDGET_FORMAT = new DecimalFormat("#,##0.00");
+    private static final String DATE_INPUT_PATTERN = "^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(25|26|27|28|29|30)$";
+    private static final String TIME_INPUT_PATTERN = "^(0?[1-9]|1[0-2]):[0-5][0-9](?i)(am|pm)$";
+    private static final String BUDGET_INPUT_PATTERN = "^\\d+(\\.\\d{1,2})?$";
+    private static final BigDecimal MAX_TOTAL_BUDGET = new BigDecimal("500000");
 
     private JFrame frame;
     private Event event;
@@ -260,7 +254,7 @@ public class EventCustomization {
         overviewPanel.setOpaque(false);
         overviewPanel.setLayout(new BoxLayout(overviewPanel, BoxLayout.Y_AXIS));
 
-        String eventStatus = getEventStatus();
+        String eventStatus = event.getEventStatus();
         Color eventStatusColor = getEventStatusColor(eventStatus);
         BigDecimal remainingBudget = event.getRemainingBudgetAmount();
         Color remainingBudgetColor = getRemainingBudgetColor(remainingBudget);
@@ -283,9 +277,9 @@ public class EventCustomization {
         JPanel statsPanel = new JPanel(new GridLayout(1, 4, 10, 0));
         statsPanel.setOpaque(false);
         statsPanel.add(createDashboardCard("Event Status", eventStatus, eventStatusColor));
-        statsPanel.add(createDashboardCard("Total Budget", formatBudget(remainingBudget), remainingBudgetColor));
-        statsPanel.add(createDashboardCard("Date", event.getDate()));
-        statsPanel.add(createDashboardCard("Time", event.getTime()));
+        statsPanel.add(createDashboardCard("Total Budget", formatBudget(remainingBudget), remainingBudgetColor, this::editTotalBudget));
+        statsPanel.add(createDashboardCard("Date", event.getDate(), Color.WHITE, this::editDate));
+        statsPanel.add(createDashboardCard("Time", event.getTime(), Color.WHITE, this::editTime));
 
         dashboard.add(overviewPanel, BorderLayout.CENTER);
         dashboard.add(statsPanel, BorderLayout.EAST);
@@ -294,10 +288,14 @@ public class EventCustomization {
     }
 
     private JPanel createDashboardCard(String title, String value) {
-        return createDashboardCard(title, value, Color.WHITE);
+        return createDashboardCard(title, value, Color.WHITE, null);
     }
 
     private JPanel createDashboardCard(String title, String value, Color valueColor) {
+        return createDashboardCard(title, value, valueColor, null);
+    }
+
+    private JPanel createDashboardCard(String title, String value, Color valueColor, Runnable onClick) {
         JPanel card = new JPanel();
         card.setOpaque(true);
         card.setBackground(new Color(0x324A70));
@@ -322,15 +320,27 @@ public class EventCustomization {
         card.add(Box.createRigidArea(new Dimension(0, 10)));
         card.add(valueLabel);
         card.add(Box.createVerticalGlue());
+
+        if (onClick != null) {
+            makeDashboardCardClickable(card, onClick, title);
+            makeDashboardCardClickable(titleLabel, onClick, title);
+            makeDashboardCardClickable(valueLabel, onClick, title);
+        }
+
         return card;
     }
 
-    private String getEventStatus() {
-        LocalDateTime eventDateTime = parseEventDateTime();
-        if (eventDateTime == null) {
-            return "Status Unavailable";
+    private void makeDashboardCardClickable(Component component, Runnable onClick, String title) {
+        component.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (component instanceof JComponent) {
+            ((JComponent) component).setToolTipText("Click to edit " + title.toLowerCase() + ".");
         }
-        return eventDateTime.isBefore(LocalDateTime.now()) ? "Concluded" : "In Progress";
+        component.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onClick.run();
+            }
+        });
     }
 
     private Color getEventStatusColor(String eventStatus) {
@@ -341,17 +351,6 @@ public class EventCustomization {
             return new Color(0xB7F5C6);
         }
         return new Color(0xFFF1B3);
-    }
-
-    private LocalDateTime parseEventDateTime() {
-        try {
-            return LocalDateTime.parse(
-                    event.getDate() + " " + event.getTime(),
-                    EVENT_DATE_TIME_FORMATTER
-            );
-        } catch (DateTimeParseException ex) {
-            return null;
-        }
     }
 
     public JFrame getFrame() {
@@ -396,5 +395,109 @@ public class EventCustomization {
 
     private String formatBudget(BigDecimal amount) {
         return BUDGET_FORMAT.format(amount);
+    }
+
+    private void editDate() {
+        String updatedDate = promptForUpdatedValue(
+                "Edit Date",
+                "Enter a new date (MM/DD/YY):",
+                event.getDate()
+        );
+        if (updatedDate == null) {
+            return;
+        }
+        if (!updatedDate.matches(DATE_INPUT_PATTERN)) {
+            JOptionPane.showMessageDialog(frame,
+                    "Date must be in MM/DD/YY format with a year from 25 to 30 (e.g., 04/11/26).",
+                    "Invalid Date",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        persistEventDetails(updatedDate, event.getTime(), event.getTotalBudget());
+    }
+
+    private void editTime() {
+        String updatedTime = promptForUpdatedValue(
+                "Edit Time",
+                "Enter a new time (hh:mmam/pm):",
+                event.getTime()
+        );
+        if (updatedTime == null) {
+            return;
+        }
+        if (!updatedTime.matches(TIME_INPUT_PATTERN)) {
+            JOptionPane.showMessageDialog(frame,
+                    "Time must be in hh:mmam/pm format (e.g., 10:00am).",
+                    "Invalid Time",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        persistEventDetails(event.getDate(), updatedTime, event.getTotalBudget());
+    }
+
+    private void editTotalBudget() {
+        String updatedBudget = promptForUpdatedValue(
+                "Edit Total Budget",
+                "Enter a new total budget:",
+                event.getTotalBudget()
+        );
+        if (updatedBudget == null) {
+            return;
+        }
+        if (!updatedBudget.matches(BUDGET_INPUT_PATTERN)) {
+            JOptionPane.showMessageDialog(frame,
+                    "Total budget must be a positive number with up to 2 decimals (e.g., 15000.00).",
+                    "Invalid Budget",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        BigDecimal updatedBudgetAmount = new BigDecimal(updatedBudget);
+        if (updatedBudgetAmount.compareTo(BigDecimal.ZERO) <= 0 ||
+                updatedBudgetAmount.compareTo(MAX_TOTAL_BUDGET) > 0) {
+            JOptionPane.showMessageDialog(frame,
+                    "Total budget must be greater than 0 and not exceed 500,000.00.",
+                    "Invalid Budget",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        persistEventDetails(event.getDate(), event.getTime(), updatedBudget);
+    }
+
+    private String promptForUpdatedValue(String title, String message, String currentValue) {
+        String updatedValue = (String) JOptionPane.showInputDialog(
+                frame,
+                message,
+                title,
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                null,
+                currentValue
+        );
+        if (updatedValue == null) {
+            return null;
+        }
+        return updatedValue.trim();
+    }
+
+    private void persistEventDetails(String date, String time, String totalBudget) {
+        try {
+            boolean updated = EventureDatabase.updateEventDetails(event.getId(), date, time, totalBudget);
+            if (!updated) {
+                throw new java.sql.SQLException("Event not found: id=" + event.getId());
+            }
+
+            event.setDate(date);
+            event.setTime(time);
+            event.setTotalBudget(totalBudget);
+            refreshDashboard();
+        } catch (java.sql.SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(frame,
+                    "Failed to update the event details.",
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 }
