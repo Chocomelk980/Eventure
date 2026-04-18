@@ -1,20 +1,40 @@
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.Locale;
 
 public class Event {
+    private static final String DEFAULT_ACTIVITY_STATUS = "Open";
+    private static final DateTimeFormatter EVENT_DATE_TIME_FORMATTER =
+            new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern("M/d/yy h:mma")
+                    .toFormatter(Locale.ENGLISH);
+
     private final int id;
     private String name;
     private String date; // format: MM/DD/YY
     private String time; // format: hh:mmam/pm
+    private String totalBudget;
 
-    private Map<String, List<String[]>> activities = new HashMap<>();
-    private Map<String, List<String[]>> budgets = new HashMap<>();
+    private Map<String, List<String[]>> activities = new LinkedHashMap<>();
+    private Map<String, String> activityStatuses = new HashMap<>();
+    private Map<String, List<String[]>> budgets = new LinkedHashMap<>();
 
     // Constructor
     public Event(int id, String name, String date, String time) {
+        this(id, name, date, time, "0");
+    }
+
+    public Event(int id, String name, String date, String time, String totalBudget) {
         this.id = id;
         this.name = name;
         this.date = date;
         this.time = time;
+        this.totalBudget = normalizeBudgetValue(totalBudget);
     }
 
     // ---------- Basic Info ----------
@@ -22,21 +42,33 @@ public class Event {
     public String getName() { return name; }
     public String getDate() { return date; }
     public String getTime() { return time; }
+    public String getTotalBudget() { return totalBudget; }
 
     public void setName(String name) { this.name = name; }
     public void setDate(String date) { this.date = date; }
     public void setTime(String time) { this.time = time; }
+    public void setTotalBudget(String totalBudget) { this.totalBudget = normalizeBudgetValue(totalBudget); }
 
     // ---------- Activities ----------
     public void addActivity(String activityName, List<String[]> participants) {
+        addActivity(activityName, participants, DEFAULT_ACTIVITY_STATUS);
+    }
+
+    public void addActivity(String activityName, List<String[]> participants, String status) {
         activities.put(activityName, participants);
+        activityStatuses.put(activityName, normalizeActivityStatus(status));
     }
 
     public void updateActivity(String activityName, List<String[]> participants) {
+        updateActivity(activityName, participants, getActivityStatus(activityName));
+    }
+
+    public void updateActivity(String activityName, List<String[]> participants, String status) {
         if (activities.containsKey(activityName)) {
             activities.put(activityName, participants);
+            activityStatuses.put(activityName, normalizeActivityStatus(status));
         } else {
-            addActivity(activityName, participants);
+            addActivity(activityName, participants, status);
         }
     }
 
@@ -46,6 +78,16 @@ public class Event {
 
     public List<String[]> getParticipantsForActivity(String activityName) {
         return activities.getOrDefault(activityName, new ArrayList<>());
+    }
+
+    public String getActivityStatus(String activityName) {
+        return normalizeActivityStatus(activityStatuses.get(activityName));
+    }
+
+    public void setActivityStatus(String activityName, String status) {
+        if (activities.containsKey(activityName)) {
+            activityStatuses.put(activityName, normalizeActivityStatus(status));
+        }
     }
 
     // ---------- Budgets ----------
@@ -69,9 +111,64 @@ public class Event {
         return budgets.getOrDefault(budgetName, new ArrayList<>());
     }
 
+    public BigDecimal getTotalBudgetAmount() {
+        return parseAmount(totalBudget);
+    }
+
+    public BigDecimal getTotalSpentAmount() {
+        BigDecimal totalSpent = BigDecimal.ZERO;
+        for (List<String[]> items : budgets.values()) {
+            for (String[] item : items) {
+                if (item != null && item.length > 3) {
+                    totalSpent = totalSpent.add(parseAmount(item[3]));
+                }
+            }
+        }
+        return totalSpent;
+    }
+
+    public BigDecimal getRemainingBudgetAmount() {
+        return getTotalBudgetAmount().subtract(getTotalSpentAmount());
+    }
+
+    public String getEventStatus() {
+        LocalDateTime eventDateTime = parseEventDateTime();
+        if (eventDateTime == null) {
+            return "Status Unavailable";
+        }
+        return eventDateTime.isBefore(LocalDateTime.now()) ? "Concluded" : "In Progress";
+    }
+
     // ---------- Display ----------
     @Override
     public String toString() {
         return name + " (" + date + " " + time + ")";
+    }
+
+    private String normalizeActivityStatus(String status) {
+        return "Closed".equalsIgnoreCase(status) ? "Closed" : DEFAULT_ACTIVITY_STATUS;
+    }
+
+    private String normalizeBudgetValue(String value) {
+        return value == null || value.trim().isEmpty() ? "0" : value.trim();
+    }
+
+    private BigDecimal parseAmount(String value) {
+        try {
+            return new BigDecimal(normalizeBudgetValue(value).replace(",", ""));
+        } catch (NumberFormatException ex) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private LocalDateTime parseEventDateTime() {
+        try {
+            return LocalDateTime.parse(
+                    date + " " + time,
+                    EVENT_DATE_TIME_FORMATTER
+            );
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
     }
 }

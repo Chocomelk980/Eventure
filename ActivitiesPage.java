@@ -53,15 +53,43 @@ public class ActivitiesPage {
 
         JLabel nameLabel = new JLabel("Activity Name:");
         nameLabel.setForeground(Color.WHITE);
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         JTextField nameField = new JTextField();
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        nameField.setMaximumSize(new Dimension(350, 30));
+        nameField.setPreferredSize(new Dimension(350, 30));
         nameField.setBackground(new Color(0x3b4a6b));
         nameField.setForeground(Color.WHITE);
         nameField.setCaretColor(Color.WHITE);
         nameField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2));
+        nameField.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         centerPanel.add(nameLabel);
         centerPanel.add(nameField);
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+
+        JLabel statusLabel = new JLabel("Activity Status:");
+        statusLabel.setForeground(Color.WHITE);
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JToggleButton openStatusBtn = createStatusButton("Open");
+        JToggleButton closedStatusBtn = createStatusButton("Closed");
+        ButtonGroup statusGroup = new ButtonGroup();
+        statusGroup.add(openStatusBtn);
+        statusGroup.add(closedStatusBtn);
+        openStatusBtn.setSelected(true);
+        updateStatusButtonStyles(openStatusBtn, closedStatusBtn);
+
+        openStatusBtn.addActionListener(e -> updateStatusButtonStyles(openStatusBtn, closedStatusBtn));
+        closedStatusBtn.addActionListener(e -> updateStatusButtonStyles(openStatusBtn, closedStatusBtn));
+
+        JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        statusPanel.setOpaque(false);
+        statusPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        statusPanel.add(openStatusBtn);
+        statusPanel.add(closedStatusBtn);
+
+        centerPanel.add(statusLabel);
+        centerPanel.add(statusPanel);
         centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
 
         String[] columns = {"Name", "Student Number", "Contact"};
@@ -126,7 +154,11 @@ public class ActivitiesPage {
             table.repaint();
         });
         centerPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        centerPanel.add(addParticipantBtn);
+
+        JPanel addParticipantPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        addParticipantPanel.setOpaque(false);
+        addParticipantPanel.add(addParticipantBtn);
+        centerPanel.add(addParticipantPanel);
 
         dialog.add(centerPanel, BorderLayout.CENTER);
 
@@ -154,6 +186,7 @@ public class ActivitiesPage {
         // Save → commit changes with validation
         saveBtn.addActionListener(e -> {
             String activityNameInput = nameField.getText().trim();
+            String activityStatus = closedStatusBtn.isSelected() ? "Closed" : "Open";
 
             // Validate activity name (letters and spaces only, max 50)
             if (activityNameInput.isEmpty() || activityNameInput.length() > 50 || !activityNameInput.matches("^[A-Za-z ]+$")) {
@@ -225,13 +258,13 @@ public class ActivitiesPage {
 
             String activityNameToPersist = activityName != null ? activityName : activityNameInput;
             if (activityName != null) {
-                event.updateActivity(activityName, participants); // update existing
+                event.updateActivity(activityName, participants, activityStatus); // update existing
             } else {
-                event.addActivity(activityNameInput, participants); // new
+                event.addActivity(activityNameInput, participants, activityStatus); // new
             }
 
             try {
-                EventureDatabase.saveActivity(event.getId(), activityNameToPersist, participants);
+                EventureDatabase.saveActivity(event.getId(), activityNameToPersist, participants, activityStatus);
             } catch (SQLException ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(dialog,
@@ -247,7 +280,7 @@ public class ActivitiesPage {
                     JOptionPane.INFORMATION_MESSAGE);
 
             dialog.dispose();
-            new EventCustomization(event);
+            parent.refreshLists();
         });
 
         // Back → return without saving
@@ -270,6 +303,14 @@ public class ActivitiesPage {
         // Pre-load existing activity if editing
         if (activityName != null) {
             nameField.setText(activityName);
+            String existingStatus = event.getActivityStatus(activityName);
+            if ("Closed".equalsIgnoreCase(existingStatus)) {
+                closedStatusBtn.setSelected(true);
+            } else {
+                openStatusBtn.setSelected(true);
+            }
+            updateStatusButtonStyles(openStatusBtn, closedStatusBtn);
+
             List<String[]> participants = event.getParticipantsForActivity(activityName);
             for (String[] p : participants) {
                 model.addRow(p);
@@ -277,5 +318,25 @@ public class ActivitiesPage {
         }
 
         dialog.setVisible(true);
+    }
+
+    private JToggleButton createStatusButton(String label) {
+        JToggleButton button = new JToggleButton(label);
+        button.setFocusPainted(false);
+        button.setForeground(Color.WHITE);
+        button.setBackground(new Color(0x23395d));
+        button.setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
+        button.setBorderPainted(false);
+        return button;
+    }
+
+    private void updateStatusButtonStyles(AbstractButton openButton, AbstractButton closedButton) {
+        styleStatusButton(openButton, new Color(0x1F7A4C), openButton.isSelected());
+        styleStatusButton(closedButton, new Color(0x8B1E2D), closedButton.isSelected());
+    }
+
+    private void styleStatusButton(AbstractButton button, Color selectedColor, boolean selected) {
+        button.setBackground(selected ? selectedColor : new Color(0x23395d));
+        button.setForeground(Color.WHITE);
     }
 }

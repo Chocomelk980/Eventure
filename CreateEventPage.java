@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 @SuppressWarnings("all")
 public class CreateEventPage {
@@ -26,7 +27,7 @@ public class CreateEventPage {
         JLabel createLabel = new JLabel("Create");
         createLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         createLabel.setForeground(Color.WHITE);
-        createLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        createLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(createLabel);
 
         // Event Name field
@@ -34,6 +35,7 @@ public class CreateEventPage {
         JLabel nameLabel = new JLabel("Name of the Event:");
         nameLabel.setForeground(Color.WHITE);
         nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         JTextField nameField = new JTextField();
         nameField.setBackground(new Color(0x152238));
         nameField.setForeground(Color.WHITE);
@@ -41,6 +43,7 @@ public class CreateEventPage {
         nameField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         nameField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true)); // edge-hugging
         nameField.setMaximumSize(new Dimension(350, 30)); // reduced length
+        nameField.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(nameLabel);
         centerPanel.add(nameField);
 
@@ -49,6 +52,7 @@ public class CreateEventPage {
         JLabel dateLabel = new JLabel("Date (MM/DD/YY):");
         dateLabel.setForeground(Color.WHITE);
         dateLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        dateLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         JTextField dateField = new JTextField();
         dateField.setBackground(new Color(0x152238));
         dateField.setForeground(Color.WHITE);
@@ -56,6 +60,7 @@ public class CreateEventPage {
         dateField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         dateField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true)); // edge-hugging
         dateField.setMaximumSize(new Dimension(350, 30)); // reduced length
+        dateField.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(dateLabel);
         centerPanel.add(dateField);
 
@@ -64,6 +69,7 @@ public class CreateEventPage {
         JLabel timeLabel = new JLabel("Time (hh:mm am/pm):");
         timeLabel.setForeground(Color.WHITE);
         timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         JTextField timeField = new JTextField();
         timeField.setBackground(new Color(0x152238));
         timeField.setForeground(Color.WHITE);
@@ -71,8 +77,26 @@ public class CreateEventPage {
         timeField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         timeField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true)); // edge-hugging
         timeField.setMaximumSize(new Dimension(350, 30)); // reduced length
+        timeField.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(timeLabel);
         centerPanel.add(timeField);
+
+        // Total budget field
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+        JLabel totalBudgetLabel = new JLabel("Total Budget:");
+        totalBudgetLabel.setForeground(Color.WHITE);
+        totalBudgetLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        totalBudgetLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JTextField totalBudgetField = new JTextField();
+        totalBudgetField.setBackground(new Color(0x152238));
+        totalBudgetField.setForeground(Color.WHITE);
+        totalBudgetField.setCaretColor(Color.WHITE);
+        totalBudgetField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        totalBudgetField.setBorder(BorderFactory.createLineBorder(new Color(0x23395d), 2, true));
+        totalBudgetField.setMaximumSize(new Dimension(350, 30));
+        totalBudgetField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        centerPanel.add(totalBudgetLabel);
+        centerPanel.add(totalBudgetField);
 
         frame.add(centerPanel, BorderLayout.CENTER);
 
@@ -101,6 +125,7 @@ public class CreateEventPage {
             String name = nameField.getText().trim();
             String date = dateField.getText().trim();
             String time = timeField.getText().trim();
+            String totalBudget = totalBudgetField.getText().trim();
 
             // Validate name (letters and spaces only, max 50)
             if (name.isEmpty() || name.length() > 50 || !name.matches("^[A-Za-z ]+$")) {
@@ -111,10 +136,10 @@ public class CreateEventPage {
                 return;
             }
 
-            // Validate date (MM/DD/YY)
-            if (!date.matches("^(0[1-9]|1[0-2])/([0-2][0-9]|3[01])/\\d{2}$")) {
+            // Validate date (MM/DD/YY) with year limited to 25-30
+            if (!date.matches("^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(25|26|27|28|29|30)$")) {
                 JOptionPane.showMessageDialog(frame,
-                        "Date must be in MM/DD/YY format (e.g., 04/11/26).",
+                        "Date must be in MM/DD/YY format with a year from 25 to 30 (e.g., 04/11/26).",
                         "Invalid Date",
                         JOptionPane.ERROR_MESSAGE);
                 return;
@@ -129,9 +154,28 @@ public class CreateEventPage {
                 return;
             }
 
-            // If all checks pass, save event with name, date, and time
+            // Validate total budget
+            if (!totalBudget.matches("^\\d+(\\.\\d{1,2})?$")) {
+                JOptionPane.showMessageDialog(frame,
+                        "Total budget must be a positive number with up to 2 decimals (e.g., 15000.00).",
+                        "Invalid Budget",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            BigDecimal totalBudgetAmount = new BigDecimal(totalBudget);
+            if (totalBudgetAmount.compareTo(BigDecimal.ZERO) <= 0 ||
+                    totalBudgetAmount.compareTo(new BigDecimal("500000")) > 0) {
+                JOptionPane.showMessageDialog(frame,
+                        "Total budget must be greater than 0 and not exceed 500,000.00.",
+                        "Invalid Budget",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // If all checks pass, save event with name, date, time, and total budget
             try {
-                EventureDatabase.createEvent(name, date, time);
+                EventureDatabase.createEvent(name, date, time, totalBudget);
             } catch (SQLException ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(frame,

@@ -250,14 +250,14 @@ public class BudgetsPage {
                  return;
              }
 
-             JOptionPane.showMessageDialog(dialog,
-                     "Budget saved successfully!",
-                     "Success",
-                     JOptionPane.INFORMATION_MESSAGE);
+              JOptionPane.showMessageDialog(dialog,
+                      "Budget saved successfully!",
+                      "Success",
+                      JOptionPane.INFORMATION_MESSAGE);
 
-             dialog.dispose();
-             new EventCustomization(event);
-         });
+              dialog.dispose();
+              parent.refreshLists();
+          });
 
          // Back → return without saving
          backBtn.addActionListener(evt -> {
