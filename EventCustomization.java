@@ -2,11 +2,28 @@ import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.text.DecimalFormat;
+import java.util.Locale;
 import java.util.*;
 @SuppressWarnings("all")
 public class EventCustomization {
+    private static final DateTimeFormatter EVENT_DATE_TIME_FORMATTER =
+            new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern("M/d/yy h:mma")
+                    .toFormatter(Locale.ENGLISH);
+    private static final DecimalFormat BUDGET_FORMAT = new DecimalFormat("#,##0.00");
+
     private JFrame frame;
     private Event event;
+    private JPanel dashboardPanel;
+    private DefaultListModel<String> activityModel;
+    private DefaultListModel<String> budgetModel;
 
     public EventCustomization(Event event) {
         this.event = event;
@@ -19,22 +36,8 @@ public class EventCustomization {
         frame.setUndecorated(false);
         frame.setContentPane(new EventureGradientPanel(new BorderLayout()));
 
-        // Banner placeholder (transparent so gradient shows through)
-        JPanel banner = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setColor(new Color(0x23395d));
-                g2.setStroke(new BasicStroke(3));
-                g2.drawRoundRect(10, 10, getWidth()-20, getHeight()-20, 30, 30);
-                g2.drawLine(20, 20, getWidth()-20, getHeight()-20);
-                g2.drawLine(getWidth()-20, 20, 20, getHeight()-20);
-            }
-        };
-        banner.setPreferredSize(new Dimension(600, 150));
-        banner.setOpaque(false); // let gradient show
-        frame.add(banner, BorderLayout.NORTH);
+        dashboardPanel = buildDashboardPanel();
+        frame.add(dashboardPanel, BorderLayout.NORTH);
 
         // Bottom panel with two columns
         JPanel bottomPanel = new JPanel(new GridLayout(1, 2, 20, 0));
@@ -42,7 +45,7 @@ public class EventCustomization {
         bottomPanel.setOpaque(false); // transparent
 
         // Activities column
-        DefaultListModel<String> activityModel = new DefaultListModel<>();
+        activityModel = new DefaultListModel<>();
         for (String a : event.getActivityNames()) {
             activityModel.addElement(a);
         }
@@ -60,7 +63,7 @@ public class EventCustomization {
         activitiesBorder.setTitleFont(new Font("Segoe UI", Font.BOLD, 14));
         activityScroll.setBorder(activitiesBorder);
 
-        DefaultListCellRenderer renderer = new DefaultListCellRenderer() {
+        DefaultListCellRenderer stripedRenderer = new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(
                     JList<?> list, Object value, int index,
@@ -70,23 +73,13 @@ public class EventCustomization {
                         list, value, index, isSelected, cellHasFocus);
 
                 label.setOpaque(true);
-
-                if (isSelected) {
-                    label.setBackground(new Color(0x23395d));
-                } else {
-                    if (index % 2 == 0) {
-                        label.setBackground(new Color(0x3b4a6b));
-                    } else {
-                        label.setBackground(new Color(0x4a5d7c));
-                    }
-                }
-
+                label.setBackground(getListRowColor(index, isSelected));
                 label.setForeground(Color.WHITE);
                 label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
                 return label;
             }
         };
-        activityList.setCellRenderer(renderer);
+        activityList.setCellRenderer(createActivityListRenderer());
 
         activityList.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
@@ -126,7 +119,7 @@ public class EventCustomization {
         bottomPanel.add(activitiesPanel);
 
         // Budgets column
-        DefaultListModel<String> budgetModel = new DefaultListModel<>();
+        budgetModel = new DefaultListModel<>();
         for (String b : event.getBudgetNames()) {
             budgetModel.addElement(b);
         }
@@ -144,7 +137,7 @@ public class EventCustomization {
         budgetsBorder.setTitleFont(new Font("Segoe UI", Font.BOLD, 14));
         budgetScroll.setBorder(budgetsBorder);
 
-        budgetList.setCellRenderer(renderer);
+        budgetList.setCellRenderer(stripedRenderer);
 
         budgetList.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
@@ -188,7 +181,7 @@ public class EventCustomization {
         // Home button panel
         JPanel homePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         homePanel.setOpaque(false);
-        JButton homeBtn = new JButton("Home");
+        JButton homeBtn = new JButton("Back to Homepage");
         homeBtn.setBackground(new Color(0x23395d));
         homeBtn.setForeground(Color.WHITE);
         homeBtn.setFocusPainted(false);
@@ -202,7 +195,206 @@ public class EventCustomization {
         frame.setVisible(true);
     }
 
+    private ListCellRenderer<? super String> createActivityListRenderer() {
+        return new ListCellRenderer<String>() {
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<? extends String> list,
+                    String value,
+                    int index,
+                    boolean isSelected,
+                    boolean cellHasFocus) {
+
+                JPanel rowPanel = new JPanel(new BorderLayout(12, 0));
+                rowPanel.setOpaque(true);
+                rowPanel.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+                rowPanel.setBackground(getListRowColor(index, isSelected));
+
+                JLabel nameLabel = new JLabel(value);
+                nameLabel.setForeground(Color.WHITE);
+                nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                nameLabel.setOpaque(false);
+
+                String activityStatus = event.getActivityStatus(value);
+                JLabel statusLabel = new JLabel(activityStatus);
+                statusLabel.setForeground(getActivityStatusColor(activityStatus));
+                statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+                statusLabel.setOpaque(false);
+
+                rowPanel.add(nameLabel, BorderLayout.WEST);
+                rowPanel.add(statusLabel, BorderLayout.EAST);
+                return rowPanel;
+            }
+        };
+    }
+
+    private Color getListRowColor(int index, boolean isSelected) {
+        if (isSelected) {
+            return new Color(0x23395d);
+        }
+        return index % 2 == 0 ? new Color(0x3b4a6b) : new Color(0x4a5d7c);
+    }
+
+    private Color getActivityStatusColor(String status) {
+        if ("Closed".equalsIgnoreCase(status)) {
+            return new Color(0xF5B6B6);
+        }
+        return new Color(0xB7F5C6);
+    }
+
+    private JPanel buildDashboardPanel() {
+        JPanel dashboardWrapper = new JPanel(new BorderLayout());
+        dashboardWrapper.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
+        dashboardWrapper.setOpaque(false);
+
+        JPanel dashboard = new JPanel(new BorderLayout(24, 0));
+        dashboard.setPreferredSize(new Dimension(600, 160));
+        dashboard.setBackground(new Color(0x1B2D49));
+        dashboard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x28456E), 3, true),
+                BorderFactory.createEmptyBorder(20, 24, 20, 24)
+        ));
+
+        JPanel overviewPanel = new JPanel();
+        overviewPanel.setOpaque(false);
+        overviewPanel.setLayout(new BoxLayout(overviewPanel, BoxLayout.Y_AXIS));
+
+        String eventStatus = getEventStatus();
+        Color eventStatusColor = getEventStatusColor(eventStatus);
+        BigDecimal remainingBudget = event.getRemainingBudgetAmount();
+        Color remainingBudgetColor = getRemainingBudgetColor(remainingBudget);
+
+        JLabel overviewLabel = new JLabel("Event Dashboard");
+        overviewLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        overviewLabel.setForeground(new Color(0xA8C1E8));
+        overviewLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel nameLabel = new JLabel(event.getName());
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 30));
+        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        overviewPanel.add(overviewLabel);
+        overviewPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        overviewPanel.add(nameLabel);
+        overviewPanel.add(Box.createVerticalGlue());
+
+        JPanel statsPanel = new JPanel(new GridLayout(1, 4, 10, 0));
+        statsPanel.setOpaque(false);
+        statsPanel.add(createDashboardCard("Event Status", eventStatus, eventStatusColor));
+        statsPanel.add(createDashboardCard("Total Budget", formatBudget(remainingBudget), remainingBudgetColor));
+        statsPanel.add(createDashboardCard("Date", event.getDate()));
+        statsPanel.add(createDashboardCard("Time", event.getTime()));
+
+        dashboard.add(overviewPanel, BorderLayout.CENTER);
+        dashboard.add(statsPanel, BorderLayout.EAST);
+        dashboardWrapper.add(dashboard, BorderLayout.CENTER);
+        return dashboardWrapper;
+    }
+
+    private JPanel createDashboardCard(String title, String value) {
+        return createDashboardCard(title, value, Color.WHITE);
+    }
+
+    private JPanel createDashboardCard(String title, String value, Color valueColor) {
+        JPanel card = new JPanel();
+        card.setOpaque(true);
+        card.setBackground(new Color(0x324A70));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0x516C96), 2, true),
+                BorderFactory.createEmptyBorder(14, 14, 14, 14)
+        ));
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setPreferredSize(new Dimension(130, 100));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        titleLabel.setForeground(new Color(0xB9D0F5));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel valueLabel = new JLabel("<html>" + value + "</html>");
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        valueLabel.setForeground(valueColor);
+        valueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        card.add(titleLabel);
+        card.add(Box.createRigidArea(new Dimension(0, 10)));
+        card.add(valueLabel);
+        card.add(Box.createVerticalGlue());
+        return card;
+    }
+
+    private String getEventStatus() {
+        LocalDateTime eventDateTime = parseEventDateTime();
+        if (eventDateTime == null) {
+            return "Status Unavailable";
+        }
+        return eventDateTime.isBefore(LocalDateTime.now()) ? "Concluded" : "In Progress";
+    }
+
+    private Color getEventStatusColor(String eventStatus) {
+        if ("Concluded".equals(eventStatus)) {
+            return new Color(0xF5B6B6);
+        }
+        if ("In Progress".equals(eventStatus)) {
+            return new Color(0xB7F5C6);
+        }
+        return new Color(0xFFF1B3);
+    }
+
+    private LocalDateTime parseEventDateTime() {
+        try {
+            return LocalDateTime.parse(
+                    event.getDate() + " " + event.getTime(),
+                    EVENT_DATE_TIME_FORMATTER
+            );
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
     public JFrame getFrame() {
         return frame;
+    }
+
+    public void refreshLists() {
+        // Refresh activity list
+        activityModel.clear();
+        for (String a : event.getActivityNames()) {
+            activityModel.addElement(a);
+        }
+        
+        // Refresh budget list
+        budgetModel.clear();
+        for (String b : event.getBudgetNames()) {
+            budgetModel.addElement(b);
+        }
+
+        refreshDashboard();
+    }
+
+    private void refreshDashboard() {
+        if (dashboardPanel != null) {
+            frame.remove(dashboardPanel);
+        }
+        dashboardPanel = buildDashboardPanel();
+        frame.add(dashboardPanel, BorderLayout.NORTH);
+        frame.revalidate();
+        frame.repaint();
+    }
+
+    private Color getRemainingBudgetColor(BigDecimal remainingBudget) {
+        if (remainingBudget.compareTo(BigDecimal.ZERO) < 0) {
+            return new Color(0xF5B6B6);
+        }
+        if (remainingBudget.compareTo(BigDecimal.ZERO) == 0) {
+            return new Color(0xFFF1B3);
+        }
+        return new Color(0xB7F5C6);
+    }
+
+    private String formatBudget(BigDecimal amount) {
+        return BUDGET_FORMAT.format(amount);
     }
 }

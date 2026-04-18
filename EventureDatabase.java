@@ -42,7 +42,8 @@ public final class EventureDatabase {
                             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                             "name TEXT NOT NULL," +
                             "date TEXT NOT NULL," +
-                            "time TEXT NOT NULL" +
+                            "time TEXT NOT NULL," +
+                            "total_budget TEXT NOT NULL DEFAULT '0'" +
                             ")"
             );
 
@@ -51,6 +52,7 @@ public final class EventureDatabase {
                             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                             "event_id INTEGER NOT NULL," +
                             "name TEXT NOT NULL," +
+                            "status TEXT NOT NULL DEFAULT 'Open'," +
                             "UNIQUE(event_id, name)," +
                             "FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE" +
                             ")"
@@ -91,6 +93,45 @@ public final class EventureDatabase {
                             ")"
             );
         }
+
+        ensureEventsTotalBudgetColumn(connection);
+        ensureActivitiesStatusColumn(connection);
+    }
+
+    private static void ensureEventsTotalBudgetColumn(Connection connection) throws SQLException {
+        if (columnExists(connection, "events", "total_budget")) {
+            return;
+        }
+
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "ALTER TABLE events ADD COLUMN total_budget TEXT NOT NULL DEFAULT '0'"
+            );
+        }
+    }
+
+    private static void ensureActivitiesStatusColumn(Connection connection) throws SQLException {
+        if (columnExists(connection, "activities", "status")) {
+            return;
+        }
+
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "ALTER TABLE activities ADD COLUMN status TEXT NOT NULL DEFAULT 'Open'"
+            );
+        }
+    }
+
+    private static boolean columnExists(Connection connection, String tableName, String columnName) throws SQLException {
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static List<Event> loadAllEvents() throws SQLException {
@@ -99,7 +140,7 @@ public final class EventureDatabase {
         List<Event> events = new ArrayList<>();
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(
-                     "SELECT id, name, date, time FROM events ORDER BY id DESC"
+                     "SELECT id, name, date, time, total_budget FROM events ORDER BY id DESC"
              );
              ResultSet resultSet = statement.executeQuery()) {
 
@@ -108,33 +149,47 @@ public final class EventureDatabase {
                 String name = resultSet.getString("name");
                 String date = resultSet.getString("date");
                 String time = resultSet.getString("time");
-                events.add(new Event(id, name, date, time));
+                String totalBudget = resultSet.getString("total_budget");
+                events.add(new Event(id, name, date, time, totalBudget));
             }
         }
 
         return events;
     }
 
-    public static Event createEvent(String name, String date, String time) throws SQLException {
+    public static Event createEvent(String name, String date, String time, String totalBudget) throws SQLException {
         initialize();
 
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(
-                     "INSERT INTO events(name, date, time) VALUES (?, ?, ?)",
+                     "INSERT INTO events(name, date, time, total_budget) VALUES (?, ?, ?, ?)",
                      Statement.RETURN_GENERATED_KEYS
              )) {
 
             statement.setString(1, name);
             statement.setString(2, date);
             statement.setString(3, time);
+            statement.setString(4, totalBudget);
             statement.executeUpdate();
 
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (!keys.next()) {
                     throw new SQLException("Failed to create event (no generated id).");
                 }
-                return new Event(keys.getInt(1), name, date, time);
+                return new Event(keys.getInt(1), name, date, time, totalBudget);
             }
+        }
+    }
+
+    public static boolean deleteEvent(int eventId) throws SQLException {
+        initialize();
+
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(
+                     "DELETE FROM events WHERE id = ?"
+             )) {
+            statement.setInt(1, eventId);
+            return statement.executeUpdate() > 0;
         }
     }
 
@@ -155,7 +210,7 @@ public final class EventureDatabase {
 
     private static Event loadEvent(Connection connection, int eventId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT id, name, date, time FROM events WHERE id = ?"
+                "SELECT id, name, date, time, total_budget FROM events WHERE id = ?"
         )) {
             statement.setInt(1, eventId);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -166,7 +221,8 @@ public final class EventureDatabase {
                         resultSet.getInt("id"),
                         resultSet.getString("name"),
                         resultSet.getString("date"),
-                        resultSet.getString("time")
+                        resultSet.getString("time"),
+                        resultSet.getString("total_budget")
                 );
             }
         }
@@ -174,14 +230,15 @@ public final class EventureDatabase {
 
     private static void loadActivities(Connection connection, Event event) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT id, name FROM activities WHERE event_id = ? ORDER BY id ASC"
+                "SELECT id, name, status FROM activities WHERE event_id = ? ORDER BY id ASC"
         )) {
             statement.setInt(1, event.getId());
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     int activityId = resultSet.getInt("id");
                     String activityName = resultSet.getString("name");
-                    event.addActivity(activityName, loadParticipants(connection, activityId));
+                    String activityStatus = resultSet.getString("status");
+                    event.addActivity(activityName, loadParticipants(connection, activityId), activityStatus);
                 }
             }
         }
@@ -241,13 +298,15 @@ public final class EventureDatabase {
         return items;
     }
 
-    public static void saveActivity(int eventId, String activityName, List<String[]> participants) throws SQLException {
+    public static void saveActivity(int eventId, String activityName, List<String[]> participants, String status) throws SQLException {
         initialize();
 
         try (Connection connection = connect()) {
             connection.setAutoCommit(false);
             try {
-                int activityId = getOrCreateActivityId(connection, eventId, activityName);
+                String normalizedStatus = normalizeActivityStatus(status);
+                int activityId = getOrCreateActivityId(connection, eventId, activityName, normalizedStatus);
+                updateActivityStatus(connection, activityId, normalizedStatus);
                 deleteActivityParticipants(connection, activityId);
                 insertActivityParticipants(connection, activityId, participants);
                 connection.commit();
@@ -258,12 +317,13 @@ public final class EventureDatabase {
         }
     }
 
-    private static int getOrCreateActivityId(Connection connection, int eventId, String activityName) throws SQLException {
+    private static int getOrCreateActivityId(Connection connection, int eventId, String activityName, String status) throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement(
-                "INSERT OR IGNORE INTO activities(event_id, name) VALUES (?, ?)"
+                "INSERT OR IGNORE INTO activities(event_id, name, status) VALUES (?, ?, ?)"
         )) {
             insert.setInt(1, eventId);
             insert.setString(2, activityName);
+            insert.setString(3, status);
             insert.executeUpdate();
         }
 
@@ -278,6 +338,16 @@ public final class EventureDatabase {
                 }
                 return resultSet.getInt("id");
             }
+        }
+    }
+
+    private static void updateActivityStatus(Connection connection, int activityId, String status) throws SQLException {
+        try (PreparedStatement update = connection.prepareStatement(
+                "UPDATE activities SET status = ? WHERE id = ?"
+        )) {
+            update.setString(1, status);
+            update.setInt(2, activityId);
+            update.executeUpdate();
         }
     }
 
@@ -384,5 +454,8 @@ public final class EventureDatabase {
     private static String nullToEmpty(String value) {
         return value == null ? "" : value;
     }
-}
 
+    private static String normalizeActivityStatus(String status) {
+        return "Closed".equalsIgnoreCase(status) ? "Closed" : "Open";
+    }
+}
